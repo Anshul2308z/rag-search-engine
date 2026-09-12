@@ -133,16 +133,26 @@ def main() -> None:
 
             search_results = []
 
+            flag = False
+            seen = set()
             for token in finalTokens:
+                if flag == True: 
+                    break 
                 docIds = inverted_index.get_documents(token)
+
                 if  docIds != []:
+    
                     for id in docIds:
+                        if id in seen:
+                            continue
+                        seen.add(id)
                         doc = inverted_index.get_doc_obj(id)
                         if doc == None:
                             continue
                         search_results.append(doc["title"])
                         if len(search_results) == 5:
-                            break 
+                            flag = True
+                            break
             
             for title in search_results:
                 print(title)
