@@ -2,7 +2,18 @@ import argparse
 from nltk.stem import PorterStemmer
 
 from util.InvertedIndex import InvertedIndex 
-from util.helpers import tokenize_text, build_command 
+from util.helpers import tokenize_text, build_command, tokenizeTerm
+
+
+def tf( doc_id, term):
+    term = tokenizeTerm(term)
+    inverted_index = InvertedIndex()
+    inverted_index.load()
+    val = inverted_index.get_tf(doc_id, term)
+    if val > 0:
+        print(val)
+    else: 
+        print(0)
 
 
 def main() -> None:
@@ -12,6 +23,10 @@ def main() -> None:
     search_parser = subparsers.add_parser("search", help="Search movies using keywords")
     build_parser = subparsers.add_parser("build", help="do invert indexing of the db and save to cache dir")
     search_parser.add_argument("query", type=str, help="Search query")
+
+    tf_parser = subparsers.add_parser("tf", help="Provide doc_id and a term to find it's freq in that doc!")
+    tf_parser.add_argument("doc_id", type=int, help="Document ID")
+    tf_parser.add_argument("term", type=str, help="Term to find frequency for")
 
     args = parser.parse_args()
 
@@ -81,6 +96,8 @@ def main() -> None:
 
         case "build": 
             build_command()
+        case "tf":
+            tf(args.doc_id, args.term)
         case _:
             parser.print_help()
 

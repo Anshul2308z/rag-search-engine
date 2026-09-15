@@ -1,5 +1,4 @@
 import json, string
-from util import InvertedIndex
 
 
 
@@ -20,9 +19,17 @@ def removePuntuation(text: str) -> str:
     return text.translate(translator)
 
 def build_command():
+    from util.InvertedIndex import InvertedIndex
+
     inverted_Index = InvertedIndex()
 
     inverted_Index.build()
     inverted_Index.save()
 
+
+def tokenizeTerm( term ):
+    tokenizedTerm =  tokenize_text(term)
+    if len(tokenizedTerm) != 1 :
+        raise Exception("Term must tokenize to exactly one token")
+    return tokenizedTerm[0]
 
