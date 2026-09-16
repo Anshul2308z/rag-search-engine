@@ -4,6 +4,24 @@ from nltk.stem import PorterStemmer
 from util.InvertedIndex import InvertedIndex 
 from util.helpers import tokenize_text, build_command, tokenizeTerm
 
+import math
+
+def idf(term):
+    inverted_index= InvertedIndex()
+    inverted_index.load()
+    stemmer = PorterStemmer()
+    Tokenizedterm = stemmer.stem(tokenizeTerm(term))
+
+    term_match_doc_count = 0 #also known as df ( document freq ) 
+
+    for docId in inverted_index.docmap:
+        if inverted_index.get_tf(docId, Tokenizedterm) > 0 :
+            term_match_doc_count += 1
+
+    total_doc_count = len(inverted_index.docmap)
+    idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
+
+    return idf 
 
 def tf( doc_id, term):
     term = tokenizeTerm(term)
@@ -11,9 +29,19 @@ def tf( doc_id, term):
     inverted_index.load()
     val = inverted_index.get_tf(doc_id, term)
     if val > 0:
-        print(val)
+        return val
     else: 
-        print(0)
+        return 0 
+    
+
+def tfidf(docId, term):
+    inverted_index = InvertedIndex()
+    inverted_index.load()
+    term_freq = tf(docId, term)
+    inverse_doc_freq = idf(term)
+
+    tfidf = term_freq * inverse_doc_freq
+    print(f"TF-IDF score of '{term}' in document '{docId}': {tfidf:.2f}")
 
 
 def main() -> None:
@@ -27,6 +55,13 @@ def main() -> None:
     tf_parser = subparsers.add_parser("tf", help="Provide doc_id and a term to find it's freq in that doc!")
     tf_parser.add_argument("doc_id", type=int, help="Document ID")
     tf_parser.add_argument("term", type=str, help="Term to find frequency for")
+
+    idf_parser = subparsers.add_parser("idf", help="Enter a term to retrieve it's Invertse document freq")
+    idf_parser.add_argument("term", type=str,help="Term to find inverse doc freq" )
+
+    tfidf_parser = subparsers.add_parser("tfidf", help="A value that scores terms based on rarity accross the docs and freq within a single doc")
+    tfidf_parser.add_argument("docId", type=int, help="Enter Doc Id")
+    tfidf_parser.add_argument("term", type=str, help="Enter a term")
 
     args = parser.parse_args()
 
@@ -97,7 +132,17 @@ def main() -> None:
         case "build": 
             build_command()
         case "tf":
-            tf(args.doc_id, args.term)
+            term_freq= tf(args.doc_id, args.term)
+            print(args.term + " appeared " + term_freq + "times in the provided doc")
+
+        case "idf":
+            inverse_term_freq= idf(args.term)
+            print(f"Inverse document frequency of '{args.term}': {inverse_term_freq:.2f}")
+
+
+        case "tfidf":
+            tfidf(args.docId, args.term)
+
         case _:
             parser.print_help()
 

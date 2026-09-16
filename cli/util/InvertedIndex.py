@@ -67,5 +67,3 @@ class InvertedIndex:
         return 0 #actually that thing above already returns zero if token is not in the dict 
     
 
-    
-
