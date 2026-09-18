@@ -1,14 +1,11 @@
 import json, string
 
-
-
-
 def load_movies():
     with open("data/movies.json", "r") as f:
         movies = json.load(f)["movies"]  # Load the movies data from the JSON file
         return movies 
 
-def tokenize_text(text: str) -> list:
+def tokenize_text(text: str) -> list[str]:
     text = removePuntuation(text)
     tokens = text.lower().split()
     return tokens
