@@ -1,11 +1,22 @@
 import argparse
 from nltk.stem import PorterStemmer
 
-from util.InvertedIndex import InvertedIndex, BM25_K1, BM25_B
-from util.helpers import tokenize_text, build_command, tokenizeTerm
+from lib.keyword_search import InvertedIndex, BM25_K1, BM25_B, tokenize_text, build_command, tokenizeTerm
 
 
 import math
+
+def bm25_search(query):
+    inverted_index = InvertedIndex()
+    inverted_index.load()
+    result = inverted_index.bm25_search(query)
+
+    for i, (doc_id, score) in enumerate(result):
+        print(
+            f"{i+1}. ({doc_id}) "
+            f"{inverted_index.docmap[doc_id]['title']} - "
+            f"Score: {score:.2f}"
+        )
 
 def bm25_tf_command(doc_id, term, k1, b ):
     stemmer = PorterStemmer()
@@ -96,6 +107,11 @@ def main() -> None:
         "k1", type=float, nargs="?", default=BM25_K1, help="Tunable BM25 K1 parameter")
     bm25_tf_parser.add_argument(
     "b", type=float, nargs="?", default=BM25_B, help="Tunable BM25 b parameter")
+
+    bm25search_parser = subparsers.add_parser(
+    "bm25search", help="Search movies using full BM25 scoring"
+)
+    bm25search_parser.add_argument("query", type=str, help="Search query")  
 
     args = parser.parse_args()
 
@@ -190,6 +206,12 @@ def main() -> None:
 
             bm25tf = bm25_tf_command(doc_id, term, k1, b ) 
             print(f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25tf:.2f}")
+        case "bm25search":
+            query = args.query
+            bm25_search(query)
+
+
+             
 
         case _:
             parser.print_help()

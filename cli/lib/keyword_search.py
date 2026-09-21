@@ -1,9 +1,37 @@
-from util.helpers import tokenize_text, load_movies
+import json, string
 from nltk.stem import PorterStemmer
 import os
 import pickle
 from collections import Counter 
 import math 
+
+def load_movies():
+    with open("data/movies.json", "r") as f:
+        movies = json.load(f)["movies"]  # Load the movies data from the JSON file
+        return movies 
+
+def tokenize_text(text: str) -> list[str]:
+    text = removePuntuation(text)
+    tokens = text.lower().split()
+    return tokens
+    
+
+def removePuntuation(text: str) -> str:
+    translator = str.maketrans("", "", string.punctuation)
+    return text.translate(translator)
+
+def build_command():
+    inverted_Index = InvertedIndex()
+
+    inverted_Index.build()
+    inverted_Index.save()
+
+
+def tokenizeTerm( term ):
+    tokenizedTerm =  tokenize_text(term)
+    if len(tokenizedTerm) != 1 :
+        raise Exception("Term must tokenize to exactly one token")
+    return tokenizedTerm[0]
 
 #this class is the most clutch thing in this repo! 
 
@@ -22,11 +50,15 @@ class InvertedIndex:
         self.term_frequencies = {} # dictionary mapping docIds to counter objs 
         self.doc_lengths = {} 
         self.doc_lengths_path = os.path.join(CACHE_DIR, "doc_lengths.pkl")
+        with open("data/stopwords.txt", "r") as stopwords_file:
+            self.stopwords = set(tokenize_text(stopwords_file.read()))
 
     def __add_document( self, doc_id, text ): # we are for the docId putting it in the index- basically creatin thisTOken -> it's doc id added to the set. 
         tokens = tokenize_text(text)
         stemmer = PorterStemmer()
-        stemmed_tokens = [stemmer.stem(token) for token in tokens] #stemming things here as term_frequencies also need them. 
+        stemmed_tokens = [
+            stemmer.stem(token) for token in tokens if token not in self.stopwords
+        ] #stemming things here as term_frequencies also need them. 
 
         self.term_frequencies[doc_id] = Counter(stemmed_tokens) # here is where we are creating term freq of all tokens within the doc Id 
 
@@ -70,7 +102,7 @@ class InvertedIndex:
 
         with open('cache/index.pkl', 'rb') as f :
             self.index = pickle.load(f)
-        with open('cache/docmap.pkl', 'rb') as g :
+        with open('cache/docmap.pkl', 'rb') as g:
             self.docmap = pickle.load(g)     
         with open('cache/term_frequencies.pkl', 'rb') as t:
             self.term_frequencies = pickle.load(t)
@@ -120,5 +152,32 @@ class InvertedIndex:
 
         return average_doc_length
 
-    
+    def bm25(self, doc_id, term):
+        tf = self.get_bm25_tf(doc_id, term)
+        idf = self.get_bm25_idf(term)
 
+        return tf * idf  
+
+
+    def bm25_search(self, query, limit=5):
+        tokens = tokenize_text(query)
+        stemmer = PorterStemmer()
+        stemmed_tokens = [stemmer.stem(token) for token in tokens]
+
+        scores = {}
+
+        for token in stemmed_tokens:
+            if token in self.index:
+                for doc_id in self.index[token]:
+                    if doc_id in scores:
+                        scores[doc_id] += self.bm25(doc_id, token)
+                    else:
+                        scores[doc_id] = self.bm25(doc_id, token)
+
+        sorted_docs = sorted(
+            scores.items(),
+            key=lambda item: item[1],
+            reverse=True
+        )
+
+        return sorted_docs[:limit]
