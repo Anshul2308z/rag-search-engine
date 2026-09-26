@@ -1,10 +1,10 @@
 import argparse
-from lib.semantic_search import verify_model, embed_text, verify_embeddings, embed_query_text, semanticSearch
+from lib.semantic_search import verify_model, embed_text, verify_embeddings, embed_query_text, SemanticSearch
 import json
 import math
 import re
 
-def chunk(text, size, overlap):
+def Chunks(text, size, overlap):
     words = text.split(" ")
 
     # if size == 0 :
@@ -39,19 +39,12 @@ def chunk(text, size, overlap):
             )
             i+= size - overlap # fixed bug 
 
-
     characters = 0
     for word in words: 
         characters += len(word)
     characters += len(words) - 1 
 
-
-    print(f"Chunking {characters} characters")
-    for i, chunk in enumerate(chunks):
-        print(i+1, end=". ")
-        for word in chunk: 
-            print(word, end=" ")
-        print()
+    return characters, chunks 
 
 def semantic_chunk(text, size, overlap):
 
@@ -75,13 +68,7 @@ def semantic_chunk(text, size, overlap):
             )
             i+= size - overlap
 
-    print(f"Semantically chunking {characters} characters")
-    for i, chunk in enumerate(chunks):
-        print(i+1, end=". ")
-        for s in chunk:
-            print(s, end=" ")
-        print()    
-    
+    return characters, chunks 
     
 
 
@@ -125,12 +112,21 @@ def main() -> None:
         case "embed_query":
             embed_query_text(args.query)
         case "chunk":
-            chunk(args.toChunk, args.chunk_size, args.overlap) #The key detail is that --chunk-size becomes args.chunk_size, not args.chunk-size, because argparse converts hyphens in argument names to underscores.
+            (characters, chunks) = Chunks(args.toChunk, args.chunk_size, args.overlap) #The key detail is that --chunk-size becomes args.chunk_size, not args.chunk-size, because argparse converts hyphens in argument names to underscores.
+            print(f"Chunking {characters} characters")
+            for i, chunk in enumerate(chunks):
+                print(i+1, end=". ")
+                for word in chunk: 
+                    print(word, end=" ")
+                print()
+
+
+            
         case "search":
             query = args.query
             limit = args.limit
 
-            semantic_search = semanticSearch()
+            semantic_search = SemanticSearch()
 
             documents = []
             with open("data/movies.json", "r") as f:
@@ -144,7 +140,15 @@ def main() -> None:
                 print(f"{i+1}. {r["title"]}")
                 print(r["description"])
         case "semantic_chunk":
-            semantic_chunk(args.text, args.max_chunk_size, args.overlap)
+            characters, chunks = semantic_chunk(args.text, args.max_chunk_size, args.overlap)
+            print(f"Semantically chunking {characters} characters")
+            for i, chunk in enumerate(chunks):
+                print(i+1, end=". ")
+                for s in chunk:
+                    print(s, end=" ")
+                print()    
+            
+
         case _:
             parser.print_help()
 

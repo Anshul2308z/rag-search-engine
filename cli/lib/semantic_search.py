@@ -5,12 +5,12 @@ import json
 
 # helpers 
 def verify_model():
-    semantic_search = semanticSearch()
+    semantic_search = SemanticSearch()
     print(f"Model loaded: {semantic_search.model}")
     print(f"Max sequence length: {semantic_search.model.max_seq_length}")
 
 def embed_text(text):
-    semantic_search = semanticSearch()
+    semantic_search = SemanticSearch()
     embedding=  semantic_search.generate_embedding(text)
 
     print(f"Text: {text}")
@@ -19,7 +19,7 @@ def embed_text(text):
 
 
 def verify_embeddings():
-    semantic_search = semanticSearch()
+    semantic_search = SemanticSearch()
 
     documents = []
     with open("data/movies.json", "r") as f:
@@ -33,7 +33,7 @@ def verify_embeddings():
     )
 
 def embed_query_text(query): 
-    semantic_search = semanticSearch()
+    semantic_search = SemanticSearch()
     embedding = semantic_search.generate_embedding(query)
 
     print(f"Query: {query}")
@@ -50,10 +50,10 @@ def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float: # ndarry -> 
 
     return dot_product / (norm1 * norm2)
 
-#semanticSearch class 
-class semanticSearch:
-    def __init__(self):
-        self.model = SentenceTransformer("all-MiniLM-L6-v2")
+#SemanticSearch class 
+class SemanticSearch:
+    def __init__(self, model_name = "all-MiniLM-L6-v2"):
+        self.model = SentenceTransformer(model_name)
         self.embeddings = None 
         self.documents = None 
         self.document_map = {} 
@@ -114,4 +114,24 @@ class semanticSearch:
                 }
             )
         return result
+
+#ChunkedSemanticSearch class that inherits from SemanticSearch
+
+class ChunkedSemanticSearch(SemanticSearch):
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2") -> None:
+        super().__init__(model_name)
+        self.chunk_embeddings = None
+        self.chunk_metadata = None
+
+    def build_chunk_embeddings(self, documents: list[dict]) -> np.ndarray:
+
+        self.documents = documents  
+        chunks = []
+        metadata = [{}]
+
+        for doc in documents :
+            if len(doc["description"]) == 0 :
+                 
+
+
 
