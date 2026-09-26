@@ -2,6 +2,7 @@ import argparse
 from lib.semantic_search import verify_model, embed_text, verify_embeddings, embed_query_text, semanticSearch
 import json
 import math
+import re
 
 def chunk(text, size, overlap):
     words = text.split(" ")
@@ -31,11 +32,12 @@ def chunk(text, size, overlap):
             chunks.append(
                 words[i: i+size]
             )
+            i+= size  # fixed bug
         else: 
             chunks.append(
                 words[i-overlap: i+size]
             )
-        i+= size
+            i+= size - overlap # fixed bug 
 
 
     characters = 0
@@ -51,6 +53,35 @@ def chunk(text, size, overlap):
             print(word, end=" ")
         print()
 
+def semantic_chunk(text, size, overlap):
+
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    characters = len(text)
+
+    i = 0
+    chunks= []
+
+    while i <= len(sentences):
+    #     if overlap <= size :
+    #         raise Exception("Invalid overlap: {overlap} for size: {size}")
+
+            
+        if i == 0:
+            chunks.append(sentences[i:i+size])
+            i+= size
+        else: 
+            chunks.append(
+                sentences[i - overlap: i+ size - overlap]
+            )
+            i+= size - overlap
+
+    print(f"Semantically chunking {characters} characters")
+    for i, chunk in enumerate(chunks):
+        print(i+1, end=". ")
+        for s in chunk:
+            print(s, end=" ")
+        print()    
+    
     
 
 
@@ -78,7 +109,10 @@ def main() -> None:
     chunk_parser.add_argument("--overlap", type= int, help="define overlap, default is None/ \"0" )
 
     
-
+    semantic_chunk_parser = subparsers.add_parser("semantic_chunk", help="give a string of text to chunk and optionally max chunk size for semantic chunking")
+    semantic_chunk_parser.add_argument("text", type=str, help="Provide text to chunk")
+    semantic_chunk_parser.add_argument("--max-chunk-size", default=4, type=int, help="max chunk size, defaulting to 4")
+    semantic_chunk_parser.add_argument("--overlap", type=int, default=0, help="overlap this much last words? Defaults to zero")
 
     args = parser.parse_args()
     match args.command: 
@@ -109,7 +143,8 @@ def main() -> None:
             for i, r in enumerate(results):
                 print(f"{i+1}. {r["title"]}")
                 print(r["description"])
-
+        case "semantic_chunk":
+            semantic_chunk(args.text, args.max_chunk_size, args.overlap)
         case _:
             parser.print_help()
 
