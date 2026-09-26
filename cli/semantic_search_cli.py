@@ -1,6 +1,32 @@
 import argparse
 from lib.semantic_search import verify_model, embed_text, verify_embeddings, embed_query_text, SementicSearch
 import json
+import math
+
+def chunk(text, size):
+    words = text.split(" ")
+
+    # if size == 0 :
+    #     print("invalid size!")
+    #     return 
+    
+    chunks = [words[i:i+size] for i in range(0, len(words), size)]
+
+    characters = 0
+    for chunk in chunks:
+        for word in chunk: 
+            characters += len(word)
+    characters += len(words) -1 
+            
+
+    print(f"Chunking {characters} characters")
+    for i, chunk in enumerate(chunks):
+        print(i+1, end=". ")
+        for word in chunk: 
+            print(word, end=" ")
+        print()
+
+    
 
 
 def main() -> None:
@@ -21,6 +47,11 @@ def main() -> None:
     search_parser.add_argument("query", type=str, help="a term to query against db")
     search_parser.add_argument("--limit", type=int, default=5, help="limit to X most similar results")
 
+    chunk_parser = subparsers.add_parser("chunk", help="give a string of text to chunk and optionally chunk size")
+    chunk_parser.add_argument("toChunk",type=str, help="This is a positional argument for text to chunk")
+    chunk_parser.add_argument("--chunk-size", type=int, default=200, help="define chunk size, default is 200")
+
+
     args = parser.parse_args()
     match args.command: 
         case "verify":
@@ -31,6 +62,8 @@ def main() -> None:
             verify_embeddings()
         case "embed_query":
             embed_query_text(args.query)
+        case "chunk":
+            chunk(args.toChunk, args.chunk_size) #The key detail is that --chunk-size becomes args.chunk_size, not args.chunk-size, because argparse converts hyphens in argument names to underscores.
         case "search":
             query = args.query
             limit = args.limit
