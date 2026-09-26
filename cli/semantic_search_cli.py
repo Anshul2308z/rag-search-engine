@@ -1,5 +1,5 @@
 import argparse
-from lib.semantic_search import verify_model, embed_text, verify_embeddings, embed_query_text, SementicSearch
+from lib.semantic_search import verify_model, embed_text, verify_embeddings, embed_query_text, semanticSearch
 import json
 import math
 
@@ -55,7 +55,7 @@ def chunk(text, size, overlap):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Sementic Search CLI")
+    parser = argparse.ArgumentParser(description="semantic Search CLI")
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -77,6 +77,8 @@ def main() -> None:
     chunk_parser.add_argument("--chunk-size", type=int, default=200, help="define chunk size, default is 200")
     chunk_parser.add_argument("--overlap", type= int, help="define overlap, default is None/ \"0" )
 
+    
+
 
     args = parser.parse_args()
     match args.command: 
@@ -94,15 +96,15 @@ def main() -> None:
             query = args.query
             limit = args.limit
 
-            sementic_search = SementicSearch()
+            semantic_search = semanticSearch()
 
             documents = []
             with open("data/movies.json", "r") as f:
                 documents = json.load(f)["movies"]
 
-            embeddings = sementic_search.load_or_create_embeddings(documents)
+            embeddings = semantic_search.load_or_create_embeddings(documents)
 
-            results = sementic_search.search(query, limit)
+            results = semantic_search.search(query, limit)
 
             for i, r in enumerate(results):
                 print(f"{i+1}. {r["title"]}")

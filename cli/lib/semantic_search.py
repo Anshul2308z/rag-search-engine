@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path 
 import json 
 
-class SementicSearch:
+class semanticSearch:
     def __init__(self):
         self.model = SentenceTransformer("all-MiniLM-L6-v2")
         self.embeddings = None 
@@ -72,13 +72,13 @@ class SementicSearch:
 
 
 def verify_model():
-    sementic_search = SementicSearch()
-    print(f"Model loaded: {sementic_search.model}")
-    print(f"Max sequence length: {sementic_search.model.max_seq_length}")
+    semantic_search = semanticSearch()
+    print(f"Model loaded: {semantic_search.model}")
+    print(f"Max sequence length: {semantic_search.model.max_seq_length}")
 
 def embed_text(text):
-    sementic_search = SementicSearch()
-    embedding=  sementic_search.generate_embedding(text)
+    semantic_search = semanticSearch()
+    embedding=  semantic_search.generate_embedding(text)
 
     print(f"Text: {text}")
     print(f"First 3 dimensions: {embedding[:3]}")
@@ -86,13 +86,13 @@ def embed_text(text):
 
 
 def verify_embeddings():
-    sementic_search = SementicSearch()
+    semantic_search = semanticSearch()
 
     documents = []
     with open("data/movies.json", "r") as f:
         documents = json.load(f)["movies"]
 
-    embeddings = sementic_search.load_or_create_embeddings(documents)
+    embeddings = semantic_search.load_or_create_embeddings(documents)
 
     print(f"Number of docs:   {len(documents)}")
     print(
@@ -100,8 +100,8 @@ def verify_embeddings():
     )
 
 def embed_query_text(query): 
-    sementic_search = SementicSearch()
-    embedding = sementic_search.generate_embedding(query)
+    semantic_search = semanticSearch()
+    embedding = semantic_search.generate_embedding(query)
 
     print(f"Query: {query}")
     print(f"First 3 dimensions: {embedding[:3]}")
