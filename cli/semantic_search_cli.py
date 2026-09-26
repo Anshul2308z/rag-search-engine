@@ -3,7 +3,7 @@ from lib.semantic_search import verify_model, embed_text, verify_embeddings, emb
 import json
 import math
 
-def chunk(text, size):
+def chunk(text, size, overlap):
     words = text.split(" ")
 
     # if size == 0 :
@@ -12,12 +12,37 @@ def chunk(text, size):
     
     chunks = [words[i:i+size] for i in range(0, len(words), size)]
 
+    chunks = []
+
+    i = 0 
+
+    while i <= len(words) :  
+
+        if overlap == 0 :
+            chunks = [words[i:i+size] for i in range(0, len(words), size)]
+            break 
+
+        if i > len(words): 
+            break 
+        if overlap >= size : 
+            raise Exception("Invalid overlap: {overlap} for size: {size}")
+
+        if i == 0 :
+            chunks.append(
+                words[i: i+size]
+            )
+        else: 
+            chunks.append(
+                words[i-overlap: i+size]
+            )
+        i+= size
+
+
     characters = 0
-    for chunk in chunks:
-        for word in chunk: 
-            characters += len(word)
-    characters += len(words) -1 
-            
+    for word in words: 
+        characters += len(word)
+    characters += len(words) - 1 
+
 
     print(f"Chunking {characters} characters")
     for i, chunk in enumerate(chunks):
@@ -50,6 +75,7 @@ def main() -> None:
     chunk_parser = subparsers.add_parser("chunk", help="give a string of text to chunk and optionally chunk size")
     chunk_parser.add_argument("toChunk",type=str, help="This is a positional argument for text to chunk")
     chunk_parser.add_argument("--chunk-size", type=int, default=200, help="define chunk size, default is 200")
+    chunk_parser.add_argument("--overlap", type= int, help="define overlap, default is None/ \"0" )
 
 
     args = parser.parse_args()
@@ -63,7 +89,7 @@ def main() -> None:
         case "embed_query":
             embed_query_text(args.query)
         case "chunk":
-            chunk(args.toChunk, args.chunk_size) #The key detail is that --chunk-size becomes args.chunk_size, not args.chunk-size, because argparse converts hyphens in argument names to underscores.
+            chunk(args.toChunk, args.chunk_size, args.overlap) #The key detail is that --chunk-size becomes args.chunk_size, not args.chunk-size, because argparse converts hyphens in argument names to underscores.
         case "search":
             query = args.query
             limit = args.limit
