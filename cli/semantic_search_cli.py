@@ -19,7 +19,22 @@ except ModuleNotFoundError:
         SemanticSearch,
         ChunkedSemanticSearch,
     )
-import json
+try:
+    from cli.lib.search_utils import (
+        DEFAULT_CHUNK_OVERLAP,
+        DEFAULT_CHUNK_SIZE,
+        DEFAULT_SEARCH_LIMIT,
+        DEFAULT_SEMANTIC_CHUNK_SIZE,
+        load_movies,
+    )
+except ModuleNotFoundError:
+    from lib.search_utils import (
+        DEFAULT_CHUNK_OVERLAP,
+        DEFAULT_CHUNK_SIZE,
+        DEFAULT_SEARCH_LIMIT,
+        DEFAULT_SEMANTIC_CHUNK_SIZE,
+        load_movies,
+    )
 
 
 def Chunks(text, size, overlap):
@@ -73,18 +88,26 @@ def main() -> None:
 
     search_parser = subparsers.add_parser("search", help="semantically search query against the vector db")
     search_parser.add_argument("query", type=str, help="a term to query against db")
-    search_parser.add_argument("--limit", type=int, default=5, help="limit to X most similar results")
+    search_parser.add_argument("--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="limit to X most similar results")
+
+    search_chunked_parser = subparsers.add_parser(
+        "search_chunked", help="search movie description chunks semantically"
+    )
+    search_chunked_parser.add_argument("query", type=str, help="a term to query against db")
+    search_chunked_parser.add_argument(
+        "--limit", type=int, default=DEFAULT_SEARCH_LIMIT, help="limit to X most similar results"
+    )
 
     chunk_parser = subparsers.add_parser("chunk", help="give a string of text to chunk and optionally chunk size")
     chunk_parser.add_argument("text",type=str, help="This is a positional argument for text to chunk")
-    chunk_parser.add_argument("--chunk-size", type=int, default=200, help="define chunk size, default is 200")
-    chunk_parser.add_argument("--overlap", type=int, default=0, help="define overlap, default is 0")
+    chunk_parser.add_argument("--chunk-size", type=int, default=DEFAULT_CHUNK_SIZE, help="define chunk size, default is 200")
+    chunk_parser.add_argument("--overlap", type=int, default=DEFAULT_CHUNK_OVERLAP, help="define overlap, default is 0")
 
     
     semantic_chunk_parser = subparsers.add_parser("semantic_chunk", help="give a string of text to chunk and optionally max chunk size for semantic chunking")
     semantic_chunk_parser.add_argument("text", type=str, help="Provide text to chunk")
-    semantic_chunk_parser.add_argument("--max-chunk-size", default=4, type=int, help="max chunk size, defaulting to 4")
-    semantic_chunk_parser.add_argument("--overlap", type=int, default=0, help="overlap this much last words? Defaults to zero")
+    semantic_chunk_parser.add_argument("--max-chunk-size", default=DEFAULT_SEMANTIC_CHUNK_SIZE, type=int, help="max chunk size, defaulting to 4")
+    semantic_chunk_parser.add_argument("--overlap", type=int, default=DEFAULT_CHUNK_OVERLAP, help="overlap this much last words? Defaults to zero")
 
     embed_chunks_parser = subparsers.add_parser("embed_chunks", help="embeds chunks Semantically")
 
@@ -115,9 +138,7 @@ def main() -> None:
 
             semantic_search = SemanticSearch()
 
-            documents = []
-            with open("data/movies.json", "r") as f:
-                documents = json.load(f)["movies"]
+            documents = load_movies()
 
             embeddings = semantic_search.load_or_create_embeddings(documents)
 
@@ -126,6 +147,16 @@ def main() -> None:
             for i, r in enumerate(results):
                 print(f"{i+1}. {r["title"]}")
                 print(r["description"])
+
+        case "search_chunked":
+            chunked_semantic_search = ChunkedSemanticSearch()
+            movies = load_movies()
+            chunked_semantic_search.load_or_create_chunk_embeddings(movies)
+            results = chunked_semantic_search.search_chunks(args.query, args.limit)
+
+            for i, result in enumerate(results, start=1):
+                print(f"\n{i}. {result['title']} (score: {result['score']:.4f})")
+                print(f"   {result['document']}...")
 
         case "semantic_chunk":
             chunks = semantic_chunk(args.text, args.max_chunk_size, args.overlap)
@@ -138,9 +169,7 @@ def main() -> None:
 
         case "embed_chunks":
             chunked_semantic_search = ChunkedSemanticSearch()
-            movies = None
-            with open("data/movies.json", "r") as f:
-                movies = json.load(f)["movies"]
+            movies = load_movies()
             embeddings = chunked_semantic_search.load_or_create_chunk_embeddings(movies)
             print(f"Generated {len(embeddings)} chunked embeddings")
 

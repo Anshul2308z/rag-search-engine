@@ -1,14 +1,18 @@
-import json, string
+import string
 from nltk.stem import PorterStemmer
 import os
 import pickle
 from collections import Counter 
 import math 
 
-def load_movies():
-    with open("data/movies.json", "r") as f:
-        movies = json.load(f)["movies"]  # Load the movies data from the JSON file
-        return movies 
+from .search_utils import (
+    BM25_B,
+    BM25_K1,
+    CACHE_DIR,
+    DEFAULT_SEARCH_LIMIT,
+    STOPWORDS_PATH,
+    load_movies,
+)
 
 def tokenize_text(text: str) -> list[str]:
     text = removePuntuation(text)
@@ -39,10 +43,6 @@ def tokenizeTerm( term ):
 # So you'll have something like- index1 -> {docid1, docid2...}
 # for this we are using self.index 
 
-BM25_K1 = 1.5
-BM25_B = 0.75
-CACHE_DIR = "cache"
-
 class InvertedIndex:
     def __init__(self) : # the constructor 
         self.index = {} # used to map token -> id (so each token has a set of form where ti came from ), struct-> token -> (doc1, doc2 etc etc)
@@ -50,7 +50,7 @@ class InvertedIndex:
         self.term_frequencies = {} # dictionary mapping docIds to counter objs 
         self.doc_lengths = {} 
         self.doc_lengths_path = os.path.join(CACHE_DIR, "doc_lengths.pkl")
-        with open("data/stopwords.txt", "r") as stopwords_file:
+        with open(STOPWORDS_PATH, "r") as stopwords_file:
             self.stopwords = set(tokenize_text(stopwords_file.read()))
 
     def __add_document( self, doc_id, text ): # we are for the docId putting it in the index- basically creatin thisTOken -> it's doc id added to the set. 
@@ -89,24 +89,24 @@ class InvertedIndex:
     #this is where we do caching, instead of everytime running build we have actually built a cache by running build and then cached it using the save method and now we simply retrieve it everytime we need it using load. 
 
     def save(self): 
-        with open('cache/index.pkl', 'wb') as f: # wb-> write binary, similarly rb-> read binary
+        with open(os.path.join(CACHE_DIR, "index.pkl"), 'wb') as f: # wb-> write binary, similarly rb-> read binary
             pickle.dump(self.index, f)
-        with open('cache/docmap.pkl', 'wb') as g:
+        with open(os.path.join(CACHE_DIR, "docmap.pkl"), 'wb') as g:
             pickle.dump(self.docmap, g)   
-        with open('cache/term_frequencies.pkl', 'wb') as t :
+        with open(os.path.join(CACHE_DIR, "term_frequencies.pkl"), 'wb') as t :
             pickle.dump(self.term_frequencies, t)
-        with open('cache/doc_lengths.pkl', 'wb') as d:
+        with open(os.path.join(CACHE_DIR, "doc_lengths.pkl"), 'wb') as d:
             pickle.dump(self.doc_lengths, d)
 
     def load (self):
 
-        with open('cache/index.pkl', 'rb') as f :
+        with open(os.path.join(CACHE_DIR, "index.pkl"), 'rb') as f :
             self.index = pickle.load(f)
-        with open('cache/docmap.pkl', 'rb') as g:
+        with open(os.path.join(CACHE_DIR, "docmap.pkl"), 'rb') as g:
             self.docmap = pickle.load(g)     
-        with open('cache/term_frequencies.pkl', 'rb') as t:
+        with open(os.path.join(CACHE_DIR, "term_frequencies.pkl"), 'rb') as t:
             self.term_frequencies = pickle.load(t)
-        with open('cache/doc_lengths.pkl', 'rb') as d:
+        with open(os.path.join(CACHE_DIR, "doc_lengths.pkl"), 'rb') as d:
             self.doc_lengths= pickle.load(d)
 
     # a simple method that searches docmap for an id and returns docObj ( value of docId key) if it exists
@@ -159,7 +159,7 @@ class InvertedIndex:
         return tf * idf  
 
 
-    def bm25_search(self, query, limit=5):
+    def bm25_search(self, query, limit=DEFAULT_SEARCH_LIMIT):
         tokens = tokenize_text(query)
         stemmer = PorterStemmer()
         stemmed_tokens = [stemmer.stem(token) for token in tokens]

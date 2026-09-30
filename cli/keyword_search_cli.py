@@ -2,6 +2,7 @@ import argparse
 from nltk.stem import PorterStemmer
 
 from lib.keyword_search import InvertedIndex, BM25_K1, BM25_B, tokenize_text, build_command, tokenizeTerm
+from lib.search_utils import DEFAULT_SEARCH_LIMIT, STOPWORDS_PATH
 
 
 import math
@@ -127,7 +128,7 @@ def main() -> None:
 
             tokens = tokenize_text(args.query)  # Tokenize the query using the tokenize_text function
             
-            with open("data/stopwords.txt", "r") as f: #r -> read 
+            with open(STOPWORDS_PATH, "r") as f: #r -> read 
                 stopwords = f.read()
                 stopwords = tokenize_text(stopwords)  # Tokenize the stopwords using the tokenize_text function
             
@@ -169,7 +170,7 @@ def main() -> None:
                         if doc == None:
                             continue
                         search_results.append(doc["title"])
-                        if len(search_results) == 5:
+                        if len(search_results) == DEFAULT_SEARCH_LIMIT:
                             flag = True
                             break
             

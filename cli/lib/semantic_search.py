@@ -3,21 +3,37 @@ import numpy as np
 from pathlib import Path 
 import json 
 import re
+from lib.search_utils import format_search_result, Movie
 
 
 def semantic_chunk(text: str, size: int, overlap: int) -> list[str]:
     if size <= 0:
         raise ValueError("Chunk size must be greater than zero")
+
     if overlap < 0 or overlap >= size:
         raise ValueError("Overlap must be non-negative and smaller than size")
 
-    sentences = [sentence for sentence in re.split(r"(?<=[.!?])\s+", text.strip()) if sentence]
-    step = size - overlap
-    return [
-        " ".join(sentences[start:start + size])
-        for start in range(0, len(sentences), step)
+    sentences = [
+        sentence
+        for sentence in re.split(r"(?<=[.!?])\s+", text.strip())
+        if sentence
     ]
 
+    chunks = []
+    step = size - overlap
+    start = 0
+
+    while start < len(sentences):
+        chunk = sentences[start:start + size]
+
+        # Don't keep a final chunk that's only overlap
+        if chunks and len(chunk) <= overlap:
+            break
+
+        chunks.append(" ".join(chunk))
+        start += step
+
+    return chunks
 
 # helpers 
 def verify_model():
@@ -62,7 +78,7 @@ def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float: # ndarry -> 
     norm2 = np.linalg.norm(vec2)
 
     if norm1 == 0 or norm2 == 0:
-        return 0.0
+        return 0.0   
 
     return dot_product / (norm1 * norm2)
 
@@ -141,44 +157,107 @@ class ChunkedSemanticSearch(SemanticSearch):
 
     def build_chunk_embeddings(self, documents: list[dict]) -> np.ndarray:
 
-        self.documents = documents
-        self.document_map = {doc["id"]: doc for doc in documents}
-        all_chunks = []
-        chunk_metadata = []
+        self.documents = documents 
 
-        for movie_idx, doc in enumerate(self.documents):
-            if not doc["description"].strip():
+        for doc in documents : # thinking about merging it with for loop beneath 
+            self.document_map[doc["id"]] = doc 
+        
+        all_chunks:list[str] = []
+        chunk_metadata: list[dict] = []
+
+        for movieIndex,doc in enumerate(documents): 
+
+            if doc.get("description", "") == "":
                 continue
             chunks = semantic_chunk(doc["description"], 4, 1)
-            total_chunks = len(chunks)
-            for chunk_idx, chunk in enumerate(chunks):
+            totalChunks = len(chunks)
+
+            for chunkIndex,chunk in enumerate(chunks) : 
+                
                 all_chunks.append(chunk)
-                chunk_metadata.append({
-                    "movie_idx": movie_idx,
-                    "chunk_idx": chunk_idx,
-                    "total_chunks": total_chunks,
-                })
-        self.chunk_embeddings = self.model.encode(all_chunks, show_progress_bar=True)
+
+                chunk_metadata.append(
+                    {
+                        "movie_idx": movieIndex,
+                        "chunk_idx": chunkIndex,
+                        "total_chunks": totalChunks
+                    }
+                )
+
+        self.chunk_embeddings = self.model.encode(all_chunks)
         self.chunk_metadata = chunk_metadata
 
-        Path("cache").mkdir(parents=True, exist_ok=True)
+
         np.save("cache/chunk_embeddings.npy", self.chunk_embeddings)
 
         with open("cache/chunk_metadata.json", "w") as f:
             json.dump({"chunks": chunk_metadata, "total_chunks": len(all_chunks)}, f, indent=2)
 
         return self.chunk_embeddings
+        
 
     def load_or_create_chunk_embeddings(self, documents: list[dict]) -> np.ndarray:
-        self.documents = documents
-        self.document_map = {doc["id"]: doc for doc in documents}
+        self.documents = documents 
 
-        metadata_path = Path("cache/chunk_metadata.json")
-        embeddings_path = Path("cache/chunk_embeddings.npy")
-        if metadata_path.exists() and embeddings_path.exists():
+        for doc in documents:
+            self.document_map[doc["id"]] = doc
+
+        if Path("cache/chunk_embeddings.npy").exists() and Path("cache/chunk_metadata.json").exists():
+
+            self.chunk_embeddings = np.load("cache/chunk_embeddings.npy")
             with open("cache/chunk_metadata.json", "r") as f:
                 self.chunk_metadata = json.load(f)["chunks"]
-            self.chunk_embeddings = np.load(embeddings_path)
+
             return self.chunk_embeddings
 
-        return self.build_chunk_embeddings(documents)
+        else: 
+            return self.build_chunk_embeddings(documents)
+
+    def search_chunks(self, query: str, limit: int = 10):
+
+        if self.chunk_embeddings is None or self.chunk_metadata is None:
+            raise Exception("load the chunks or metadata correctly!")
+
+        embedding = self.generate_embedding(query)
+        chunk_scores = [] 
+
+        for chunk, metadata in zip(self.chunk_embeddings, self.chunk_metadata):
+            similarity =  cosine_similarity(chunk, embedding)
+            chunk_scores.append(
+                {
+                    "chunk_idx": metadata["chunk_idx"],
+                    "movie_idx": metadata["movie_idx"],
+                    "score": similarity
+                }
+            )
+
+        movies_chunk_scores = {}
+
+        for c in chunk_scores:
+            movie_idx = c["movie_idx"]
+
+            if movie_idx not in movies_chunk_scores:
+                movies_chunk_scores[movie_idx] = c["score"]
+
+            elif c["score"] > movies_chunk_scores[movie_idx]:
+                movies_chunk_scores[movie_idx] = c["score"]
+
+        ranked_movies = sorted(
+            movies_chunk_scores.items(),
+            key=lambda item: item[1],
+            reverse=True,
+        )[:limit]
+
+        results =[]
+
+        
+        for movie_idx, score in ranked_movies:
+            doc = self.documents[movie_idx]
+            title = doc["title"]
+            document = doc["description"][:100]
+
+            results.append(
+                format_search_result(doc["id"], title, document, score)
+            )
+        return results
+
