@@ -13,11 +13,22 @@ def semantic_chunk(text: str, size: int, overlap: int) -> list[str]:
     if overlap < 0 or overlap >= size:
         raise ValueError("Overlap must be non-negative and smaller than size")
 
+    text = text.strip()
+
+    if text== "":
+        return []
+
     sentences = [
-        sentence
-        for sentence in re.split(r"(?<=[.!?])\s+", text.strip())
-        if sentence
+        sentence.strip()
+        for sentence in re.split(r"(?<=[.!?])\s+", text)
+        if sentence.strip()
     ]
+
+
+    if len(sentences) == 1 and not sentences[0].endswith(
+        (".", "!", "?")
+    ): 
+        return sentences
 
     chunks = []
     step = size - overlap
@@ -184,7 +195,7 @@ class ChunkedSemanticSearch(SemanticSearch):
                     }
                 )
 
-        self.chunk_embeddings = self.model.encode(all_chunks)
+        self.chunk_embeddings = self.model.encode(all_chunks, show_progress_bar=True)
         self.chunk_metadata = chunk_metadata
 
 
