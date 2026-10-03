@@ -3,7 +3,10 @@ import numpy as np
 from pathlib import Path 
 import json 
 import re
-from lib.search_utils import format_search_result, Movie
+try:
+    from cli.lib.search_utils import format_search_result, Movie
+except ModuleNotFoundError:
+    from lib.search_utils import format_search_result, Movie
 
 
 def semantic_chunk(text: str, size: int, overlap: int) -> list[str]:

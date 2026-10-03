@@ -50,8 +50,10 @@ class InvertedIndex:
         self.term_frequencies = {} # dictionary mapping docIds to counter objs 
         self.doc_lengths = {} 
         self.doc_lengths_path = os.path.join(CACHE_DIR, "doc_lengths.pkl")
+        self.index_path = os.path.join(CACHE_DIR, "index.pkl")
         with open(STOPWORDS_PATH, "r") as stopwords_file:
             self.stopwords = set(tokenize_text(stopwords_file.read()))
+
 
     def __add_document( self, doc_id, text ): # we are for the docId putting it in the index- basically creatin thisTOken -> it's doc id added to the set. 
         tokens = tokenize_text(text)
