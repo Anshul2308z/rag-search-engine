@@ -16,6 +16,10 @@ def main() -> None:
     weighted_search.add_argument("--alpha", type=float, default=0.5, help="a constant that we can use to dynamically control the weighting")
     weighted_search.add_argument("--limit", type=int, default=5, help="limit results")
 
+    rrf_search_parser = sub_parsers.add_parser("rrf-search", help="Reciprocal Rank Fusion search" )
+    rrf_search_parser.add_argument("query", type=str, help="type query")
+    rrf_search_parser.add_argument("-k", type=int, default=60)
+    rrf_search_parser.add_argument("--limit", type=int, default=5)
 
     args = parser.parse_args()
 
@@ -57,6 +61,19 @@ def main() -> None:
                 print(f"  Hybrid Score: {result["hybrid_score"]:.3f}")
                 print(f"  BM25: {result["bm25_score"]:.3f}, Semantic: {result["semantic_score"]:.3f}")
                 print(f"  {d["description"][:30]}...")
+
+        case "rrf-search": 
+            movies = load_movies()
+            hybrid_search = HybridSearch(movies)
+
+            results = hybrid_search.rrf_search(args.query, args.k, args.limit)
+
+            for i, result in enumerate(results):
+                print(f"{i+1}. {result["document"]["title"]}")
+                print(f"  RRF Score: {result["rrf_score"]}")
+                print(f"  BM25 Rank: {result["bm25_rank"]}, Semantic Rank: {result["semantic_rank"]}")
+                print(f"  {result["document"]["description"][:30]}...")
+
 
             
         case _:

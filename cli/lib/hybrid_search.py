@@ -64,7 +64,67 @@ class HybridSearch:
 
         
     def rrf_search(self, query: str, k: int, limit: int = 10) -> list[dict]:
-        raise NotImplementedError("RRF hybrid search is not implemented yet.")
+
+        bm25 = self._bm25_search(query, 500 * limit)
+        semantic = self.semantic_search.search_chunks(query, limit * 500)
+
+        '''
+        id: int,
+        title: str,
+        document: str,
+        score: float,
+        '''
+
+        results = {}
+
+        for pos, result in enumerate(bm25): 
+            document = self.semantic_search.document_map[result["id"]]
+            results[result["id"]] = {
+                "document": document,
+                "bm25_rank": pos + 1, 
+                "semantic_rank": None, 
+            }
+
+        for pos, result in enumerate(semantic):
+            if result["id"] in results: 
+                results[result["id"]]["semantic_rank"] = pos + 1 
+            else: 
+                document = self.semantic_search.document_map[result["id"]]
+                results[result["id"]] = {
+                    "document": document,
+                    "bm25_rank": None,
+                    "semantic_rank": pos + 1 
+                }
+
+        resultList = []
+
+        for doc_id, result in results.items():
+            bm25_rank = result["bm25_rank"]
+            semantic_rank = result["semantic_rank"]
+
+            score =  0
+
+            if type(bm25_rank) == int: 
+                score += rrf_score(bm25_rank, k)
+
+            if type(semantic_rank) == int: 
+                score += rrf_score(semantic_rank, k)
+
+                # rrf_score is not added to the results dict as it is directly appended to the list
+
+            resultList.append({
+                "id": doc_id,
+                "document": result["document"],
+                "bm25_rank": result["bm25_rank"],
+                "semantic_rank": result["semantic_rank"],
+                "rrf_score": score
+            })
+
+        #sorting by rrf_score
+        resultList = sorted(resultList, key=lambda x: x["rrf_score"], reverse=True)
+
+        return resultList[:limit]
+
 
 
 def normalize ( results: list[SearchResult]):
@@ -82,3 +142,6 @@ def normalize ( results: list[SearchResult]):
         for result in results :
             result["score"] = ( result["score"] - min_score ) / ( max_score - min_score) 
         return results 
+
+def rrf_score( rank: int, k:int = 60):
+    return 1/( rank + k )
