@@ -4,6 +4,8 @@ import os
 import pickle
 from collections import Counter 
 import math 
+from lib.search_utils import SearchResult
+
 
 from .search_utils import (
     BM25_B,
@@ -161,7 +163,7 @@ class InvertedIndex:
         return tf * idf  
 
 
-    def bm25_search(self, query, limit=DEFAULT_SEARCH_LIMIT):
+    def bm25_search(self, query, limit=DEFAULT_SEARCH_LIMIT)-> list[SearchResult]:
         tokens = tokenize_text(query)
         stemmer = PorterStemmer()
         stemmed_tokens = [stemmer.stem(token) for token in tokens]
@@ -182,4 +184,13 @@ class InvertedIndex:
             reverse=True
         )
 
-        return sorted_docs[:limit]
+        return [
+            {
+                "id": doc_id,
+                "title": self.docmap[doc_id]["title"],
+                "document": self.docmap[doc_id]["description"][:100],
+                "score": round(score, 3),
+                "metadata": {},
+            }
+            for doc_id, score in sorted_docs[:limit]
+        ]

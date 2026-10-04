@@ -12,11 +12,11 @@ def bm25_search(query):
     inverted_index.load()
     result = inverted_index.bm25_search(query)
 
-    for i, (doc_id, score) in enumerate(result):
+    for i, search_result in enumerate(result):
         print(
-            f"{i+1}. ({doc_id}) "
-            f"{inverted_index.docmap[doc_id]['title']} - "
-            f"Score: {score:.2f}"
+            f"{i+1}. ({search_result['id']}) "
+            f"{search_result['title']} - "
+            f"Score: {search_result['score']:.2f}"
         )
 
 def bm25_tf_command(doc_id, term, k1, b ):

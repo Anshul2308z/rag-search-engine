@@ -15,6 +15,7 @@ class SearchResult(TypedDict):
     document: str
     score: float
     metadata: dict[str, Any]
+    
 
 
 class GoldenTestCase(TypedDict):
