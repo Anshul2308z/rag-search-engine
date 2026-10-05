@@ -1,7 +1,7 @@
 import argparse
 from lib.hybrid_search import HybridSearch
 from lib.search_utils import load_movies
-from llm_integration import enhance_query, enhancement_result
+from llm_integration import enhance_query, enhancement_result, enhance_rewriter, enhance_expand
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
@@ -21,7 +21,7 @@ def main() -> None:
     rrf_search_parser.add_argument("query", type=str, help="type query")
     rrf_search_parser.add_argument("-k", type=int, default=60)
     rrf_search_parser.add_argument("--limit", type=int, default=5)
-    rrf_search_parser.add_argument("--enhance", type=str, choices=["spell"], help="Query enhnacement method")
+    rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhnacement method")
 
     args = parser.parse_args()
 
@@ -70,12 +70,22 @@ def main() -> None:
             hybrid_search = HybridSearch(movies)
 
             enhance = args.enhance 
+            
             if enhance == "spell": 
                 enhanced = enhance_query(args.query)
-                enhancement_result(enhance, args.query, enhanced)
-                results = hybrid_search.rrf_search(enhanced, args.k, args.limit)
-            else:
+            elif enhance == "rewrite":
+                enhanced = enhance_rewriter(args.query)
+            elif enhance == "expand": 
+                enhanced = enhance_expand(args.query)
+            else: 
+                enhanced = ""
+
+            if enhanced == "":
                 results = hybrid_search.rrf_search(args.query, args.k, args.limit)
+            else: 
+                enhancement_result( enhance, args.query, enhanced)
+                results = hybrid_search.rrf_search(enhanced,args.k, args.limit)
+
             
             for i, result in enumerate(results):
                 print(f"{i+1}. {result["document"]["title"]}")
