@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
 from openai import OpenAI
+from lib.search_utils import Movie
 from openai.types.chat import ChatCompletionMessageParam
 
 
@@ -109,3 +110,28 @@ def enhance_expand( query: str ):
         return query
 
     return response
+
+def rerank_score(query: str, doc: Movie )-> int | None:
+
+    
+    request = f"""Rate how well this movie matches the search query.
+                Query: "{query}"
+                Movie: {doc.get("title", "")} - {doc.get("document", "")}
+
+                Consider:
+                - Direct relevance to query
+                - User intent (what they're looking for)
+                - Content appropriateness
+
+                Rate 0-10 (10 = perfect match).
+                Output ONLY the number in your response, no other text or explanation.
+
+                Score:"""
+    response = query_llm(request)
+
+    try : 
+        score = int(response)
+    except ValueError :
+        score = None
+
+    return score 

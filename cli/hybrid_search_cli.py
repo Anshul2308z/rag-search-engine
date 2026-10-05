@@ -1,7 +1,9 @@
 import argparse
 from lib.hybrid_search import HybridSearch
 from lib.search_utils import load_movies
-from llm_integration import enhance_query, enhancement_result, enhance_rewriter, enhance_expand
+from llm_integration import enhance_query, enhancement_result, enhance_rewriter, enhance_expand, rerank_score
+
+import time
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
@@ -22,6 +24,8 @@ def main() -> None:
     rrf_search_parser.add_argument("-k", type=int, default=60)
     rrf_search_parser.add_argument("--limit", type=int, default=5)
     rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhnacement method")
+    rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual"], help="Reranking method- indivisual,")
+
 
     args = parser.parse_args()
 
@@ -69,26 +73,48 @@ def main() -> None:
 
             hybrid_search = HybridSearch(movies)
 
+            query = args.query
+            k = args.k 
+            limit = args.limit
+
             enhance = args.enhance 
-            
+            rerank_method= args.rerank_method
+
+            if ( rerank_method == "indivisual"):
+                limit = 5 * limit
+
             if enhance == "spell": 
-                enhanced = enhance_query(args.query)
+                enhanced = enhance_query(query)
             elif enhance == "rewrite":
-                enhanced = enhance_rewriter(args.query)
+                enhanced = enhance_rewriter(query)
             elif enhance == "expand": 
-                enhanced = enhance_expand(args.query)
+                enhanced = enhance_expand(query)
             else: 
                 enhanced = ""
 
             if enhanced == "":
-                results = hybrid_search.rrf_search(args.query, args.k, args.limit)
+                results = hybrid_search.rrf_search(query, k, limit)
             else: 
-                enhancement_result( enhance, args.query, enhanced)
-                results = hybrid_search.rrf_search(enhanced,args.k, args.limit)
+                enhancement_result( enhance, query, enhanced)
+                results = hybrid_search.rrf_search(enhanced, k, limit)
 
+
+            if rerank_method == "individual":
+                for result in results: 
+                    score = rerank_score(query, result["document"])
+                    if score : 
+                        print("rerank-score for the query was", score)
+                        result["rerank_score"] = score 
+                    time.sleep(3)
+                        
+
+                results = sorted(results, key= lambda x: x["rerank_score"], reverse=True)
+            
             
             for i, result in enumerate(results):
                 print(f"{i+1}. {result["document"]["title"]}")
+                if result.get("rerank_score") != None:
+                    print(f"Re-rank Score: {result["rerank_score"]:.3f}")
                 print(f"  RRF Score: {result["rrf_score"]:.3f}")
                 print(f"  BM25 Rank: {result["bm25_rank"]}, Semantic Rank: {result["semantic_rank"]}")
                 print(f"  {result["document"]["description"][:50]}...")
