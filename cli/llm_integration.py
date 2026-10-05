@@ -4,6 +4,8 @@ from openai import OpenAI
 from lib.search_utils import Movie
 from openai.types.chat import ChatCompletionMessageParam
 
+import json 
+
 
 def query_llm( query: str) -> str:
     load_dotenv()
@@ -135,3 +137,31 @@ def rerank_score(query: str, doc: Movie )-> int | None:
         score = None
 
     return score 
+
+def rerank_batch(query, doc_list_str): 
+
+    request = f"""Rank the movies listed below by relevance to the following search query.
+
+                Query: "{query}"
+
+                Movies:
+                {doc_list_str}
+
+                Return the movie IDs in order of relevance, best match first.
+
+                Your response must be a raw JSON array of integers.
+                Do not wrap the JSON in Markdown. Do not use a ```json code block.
+                Do not include any explanatory text.
+
+                For example:
+                [75, 12, 34, 2, 1]
+
+                Ranking:"""
+
+    response = query_llm( request )
+
+    result = json.loads(response)
+
+    return result 
+
+

@@ -1,8 +1,9 @@
 import argparse
 from lib.hybrid_search import HybridSearch
 from lib.search_utils import load_movies
-from llm_integration import enhance_query, enhancement_result, enhance_rewriter, enhance_expand, rerank_score
+from llm_integration import enhance_query, enhancement_result, enhance_rewriter, enhance_expand, rerank_score, rerank_batch
 
+from sentence_transformers import CrossEncoder
 import time
 
 def main() -> None:
@@ -24,7 +25,7 @@ def main() -> None:
     rrf_search_parser.add_argument("-k", type=int, default=60)
     rrf_search_parser.add_argument("--limit", type=int, default=5)
     rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhnacement method")
-    rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual"], help="Reranking method- indivisual,")
+    rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch", 'cross_encoder'], help="Reranking method- indivisual,")
 
 
     args = parser.parse_args()
@@ -80,7 +81,7 @@ def main() -> None:
             enhance = args.enhance 
             rerank_method= args.rerank_method
 
-            if ( rerank_method == "indivisual"):
+            if rerank_method is not None :
                 limit = 5 * limit
 
             if enhance == "spell": 
@@ -98,7 +99,6 @@ def main() -> None:
                 enhancement_result( enhance, query, enhanced)
                 results = hybrid_search.rrf_search(enhanced, k, limit)
 
-
             if rerank_method == "individual":
                 for result in results: 
                     score = rerank_score(query, result["document"])
@@ -108,13 +108,55 @@ def main() -> None:
                     time.sleep(3)
                         
 
-                results = sorted(results, key= lambda x: x["rerank_score"], reverse=True)
-            
-            
+                results = sorted(results, key= lambda x: x["rerank_score"], reverse=True) #to check and remove reverse=True
+
+            if rerank_method == "batch":
+                documents = []
+                for r in results:
+                    documents.append(
+                        f"""id: {r["id"]}
+                title: {r["document"]["title"]}
+                description: {r["document"]["description"]}"""
+                    )
+                reranked_doc_ids: list = rerank_batch(query, documents)
+
+                for result in results:
+                    if result["id"] in reranked_doc_ids:
+                        result["rerank_rank"] = reranked_doc_ids.index(result["id"]) + 1
+                    else:
+                        result["rerank_rank"] = float("inf")
+
+                results = sorted(results, key= lambda x: x["rerank_rank"]) # ascending order of rank 
+                
+
+            if rerank_method == "cross_encoder": 
+
+                pairs = []
+                cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+
+                for result in results: 
+                    doc = result["document"]
+                    pairs.append([query, f"{doc.get('title', '')} - {doc.get('document', '')}"])
+
+                scores = cross_encoder.predict(pairs)
+
+                for score, result in zip(scores, results):
+                    result["cross_encoder_score"] = score
+
+                results = sorted( results, key= lambda x: x["cross_encoder_score"], reverse=True)
+                
+                
+
+
+            results = results[:limit // 5]
             for i, result in enumerate(results):
                 print(f"{i+1}. {result["document"]["title"]}")
                 if result.get("rerank_score") != None:
                     print(f"Re-rank Score: {result["rerank_score"]:.3f}")
+                if result.get("rerank_rank") != None:
+                    print(f"Re-rank Rank: {result["rerank_rank"]}")
+                if result.get("cross_encoder_score") != None: 
+                    print(f"Cross Encoder Score: {result["cross_encoder_score"]}")
                 print(f"  RRF Score: {result["rrf_score"]:.3f}")
                 print(f"  BM25 Rank: {result["bm25_rank"]}, Semantic Rank: {result["semantic_rank"]}")
                 print(f"  {result["document"]["description"][:50]}...")
