@@ -193,3 +193,24 @@ def evaluate_results(query, formatted_results):
 
     for i, (llm_score, r ) in enumerate(zip(llm_scoring, formatted_results)):
         print (f"{i+1}. {r}: {llm_score}/3")
+
+def augmented_generation(query, docs):
+
+    request =  f"""You are a RAG agent for Webflyx, a movie streaming service.
+                Your task is to provide a natural-language answer to the user's query based on documents retrieved during search.
+                Provide a comprehensive answer that addresses the user's query.
+
+                Query: {query}
+
+                Documents:
+                {docs}
+
+                Answer:"""
+
+    response = query_llm( request )
+
+    return response 
+
+
+
+    

@@ -142,6 +142,8 @@ def main() -> None:
                 else: 
                     finalTokens.append(stemmer.stem(token))  # Stem the token and add it to finalTokens
 
+            print(", ".join(finalTokens))
+
             inverted_index = InvertedIndex()
 
             try:
@@ -155,6 +157,20 @@ def main() -> None:
 
             flag = False
             seen = set()
+
+            for doc_id, doc in sorted(inverted_index.docmap.items()):
+                title_tokens = [
+                    stemmer.stem(token)
+                    for token in tokenize_text(doc["title"])
+                    if token not in stopwords
+                ]
+                if title_tokens == finalTokens:
+                    seen.add(doc_id)
+                    search_results.append(doc["title"])
+                    if len(search_results) == DEFAULT_SEARCH_LIMIT:
+                        flag = True
+                        break
+
             for token in finalTokens:
                 if flag == True: 
                     break 
