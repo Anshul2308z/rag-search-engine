@@ -1,7 +1,7 @@
 import argparse
 from lib.hybrid_search import HybridSearch
 from lib.search_utils import load_movies
-from llm_integration import enhance_query, enhancement_result, enhance_rewriter, enhance_expand, rerank_score, rerank_batch
+from llm_integration import enhance_query, enhancement_result, enhance_rewriter, enhance_expand, rerank_score, rerank_batch, evaluate_results
 
 from sentence_transformers import CrossEncoder
 import time
@@ -26,7 +26,7 @@ def main() -> None:
     rrf_search_parser.add_argument("--limit", type=int, default=5)
     rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhnacement method")
     rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch", 'cross_encoder'], help="Reranking method- indivisual,")
-
+    rrf_search_parser.add_argument("--evaluate",action="store_true", help="llm evaluates the results")
 
     args = parser.parse_args()
 
@@ -75,6 +75,10 @@ def main() -> None:
             hybrid_search = HybridSearch(movies)
 
             query = args.query
+
+            # debug- print original query
+            # print("Original Query: ", query)
+
             k = args.k 
             limit = args.limit
 
@@ -84,20 +88,28 @@ def main() -> None:
             if rerank_method is not None :
                 limit = 5 * limit
 
-            if enhance == "spell": 
-                enhanced = enhance_query(query)
-            elif enhance == "rewrite":
-                enhanced = enhance_rewriter(query)
-            elif enhance == "expand": 
-                enhanced = enhance_expand(query)
-            else: 
-                enhanced = ""
 
-            if enhanced == "":
+            if enhance == "spell": 
+                enhanced_query = enhance_query(query)
+            elif enhance == "rewrite":
+                enhanced_query = enhance_rewriter(query)
+            elif enhance == "expand": 
+                enhanced_query = enhance_expand(query)
+            else: 
+                enhanced_query = ""
+
+            if enhanced_query == "":
                 results = hybrid_search.rrf_search(query, k, limit)
             else: 
-                enhancement_result( enhance, query, enhanced)
-                results = hybrid_search.rrf_search(enhanced, k, limit)
+                enhancement_result( enhance, query, enhanced_query)
+                # print("Enhanced Query:", enhanced_query)
+                results = hybrid_search.rrf_search(enhanced_query, k, limit)
+
+            # logging results before rerank 
+            # print("Results before rerank - ")
+            # for i, result in enumerate(results): 
+            #     print(i+1, result["document"]["title"])
+
 
             if rerank_method == "individual":
                 for result in results: 
@@ -144,12 +156,22 @@ def main() -> None:
                     result["cross_encoder_score"] = score
 
                 results = sorted( results, key= lambda x: x["cross_encoder_score"], reverse=True)
-                
-                
 
 
-            results = results[:limit // 5]
+            # #results after reranking: 
+            # for i, result in enumerate(results): 
+            #     print(i +1, result["document"]["title"])
+            
+
+            # # Actual output
+            # print("ACTUAL OUTPUT/ out of debug logs")
+
+            if rerank_method is not None:
+                results = results[:limit // 5]
+
+            
             for i, result in enumerate(results):
+
                 print(f"{i+1}. {result["document"]["title"]}")
                 if result.get("rerank_score") != None:
                     print(f"Re-rank Score: {result["rerank_score"]:.3f}")
@@ -162,6 +184,19 @@ def main() -> None:
                 print(f"  {result["document"]["description"][:50]}...")
 
 
+            #evaluate
+            if args.evaluate is not None: 
+                formatted_results = []
+                for result in results : 
+                    formatted_results.append(result["document"]["title"])
+
+                if enhanced_query is not None:
+                    evaluate_results(enhanced_query, formatted_results)
+                else: 
+                    evaluate_results(query, formatted_results)
+
+
+                
             
         case _:
             parser.print_help()
