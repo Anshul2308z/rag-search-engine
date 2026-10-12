@@ -1,0 +1,1 @@
+[![Boot.dev Learn Retrieval Augmented Generation certificate](https://qvault-webapp-dynamic-assets.storage.googleapis.com/certificates/9f13a064-61ba-4f70-acf2-e58c657b33f8.jpeg?v=1791531781)](https://www.boot.dev/certificates/9f13a064-61ba-4f70-acf2-e58c657b33f8)
