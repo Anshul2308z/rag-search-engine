@@ -185,7 +185,7 @@ def main() -> None:
 
 
             #evaluate
-            if args.evaluate is not None: 
+            if args.evaluate is True: 
                 formatted_results = []
                 for result in results : 
                     formatted_results.append(result["document"]["title"])

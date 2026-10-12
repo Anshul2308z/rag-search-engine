@@ -146,7 +146,7 @@ def main() -> None:
 
             for i, r in enumerate(results):
                 print(f"{i+1}. {r["title"]}")
-                print(r["description"])
+                print(r["description"][:100])
 
         case "search_chunked":
             chunked_semantic_search = ChunkedSemanticSearch()
